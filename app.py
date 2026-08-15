@@ -4,64 +4,78 @@ import scipy.stats as stats
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="AI Thesis Helper", layout="wide")
-st.title("🤖 AI-Powered Thesis Helper & Auto-Analyzer")
-st.markdown("ဒေတာဖိုင်တင်လိုက်တာနဲ့ AI က သင့်ဒေတာအတွက် အသင့်တော်ဆုံး Statistical Test ကို ရွေးချယ်ပေးပြီး အလိုအလျောက် တွက်ချက်ပေးပါမည်။")
+st.set_page_config(page_title="Thesis Helper AI", layout="wide")
+st.title("🚀 Automated Thesis Data Analyzer (End-to-End)")
+st.markdown("ဒေတာဖိုင်တင်လိုက်ရုံဖြင့် အလိုအလျောက် သန့်စင်ခြင်း၊ စာရင်းအင်းစစ်ဆေးခြင်းနှင့် ရလဒ်ထုတ်ပေးခြင်းတို့ကို တစ်ပြိုင်နက် လုပ်ဆောင်ပေးမည်။")
 
-uploaded_file = st.file_uploader("Excel သို့မဟုတ် CSV ဖိုင် တင်ပါ", type=["csv", "xlsx"])
+uploaded_file = st.file_uploader("📊 Excel သို့မဟုတ် CSV ဖိုင် တင်ပါ", type=["csv", "xlsx"])
 
 if uploaded_file:
+    # 1. Load Data
     df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
     
-    st.subheader("📋 Data Preview")
+    st.subheader("၁. မူရင်းဒေတာ အနှစ်ချုပ် (Raw Data Preview)")
     st.dataframe(df.head())
     
-    # Column selections
-    columns = df.columns.tolist()
-    st.sidebar.header("🔍 Test Configuration")
-    test_mode = st.sidebar.radio("Analysis Mode", ["Auto-Detect (AI Recommendation)", "Manual Selection"])
+    # 2. Automated Data Cleaning
+    st.subheader("၂. အလိုအလျောက် ဒေတာသန့်စင်ခြင်း (Auto-Cleaning)")
+    initial_rows = len(df)
+    df = df.dropna()  # Missing values များကို ဖယ်ရှားခြင်း
+    cleaned_rows = len(df)
+    st.info(f"✨ ဒေတာသန့်စင်ပြီးစီးပါပြီ။ (မူရင်းအတန်းရေ: {initial_rows} | လက်ရှိအတန်းရေ: {cleaned_rows})")
     
-    if test_mode == "Auto-Detect (AI Recommendation)":
-        st.subheader("🤖 AI Recommendation & Auto-Run")
+    # 3. Automatic Column Classification
+    num_cols = df.select_dtypes(include='number').columns.tolist()
+    cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write(f"📈 **Numerical Columns ({len(num_cols)} ခု):**", num_cols)
+    with col2:
+        st.write(f"📁 **Categorical Columns ({len(cat_cols)} ခု):**", cat_cols)
         
-        # Simple Logic to recommend tests based on data types
-        num_cols = df.select_dtypes(include='number').columns.tolist()
-        cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    # 4. Automated Statistical Analysis
+    st.subheader("၃. အလိုအလျောက် စာရင်းအင်းခွဲခြမ်းစိတ်ဖြာမှု (Auto-Analysis Results)")
+    
+    # Descriptive Statistics for all numerical columns
+    st.markdown("#### 📊 Descriptive Statistics (Descriptive ဇယား)")
+    st.dataframe(df[num_cols].describe())
+    
+    # Correlation Matrix if more than 1 numerical column
+    if len(num_cols) >= 2:
+        st.markdown("#### 🔗 Correlation Analysis (ဆက်စပ်မှု ဆန်းစစ်ချက်)")
+        corr_matrix = df[num_cols].corr()
+        st.dataframe(corr_matrix)
         
-        st.write(f"- **Numerical Columns (ဂဏန်းဒေတာ):** {len(num_cols)} ခုတွေ့ရှိသည်")
-        st.write(f"- **Categorical Columns (အုပ်စုခွဲဒေတာ):** {len(cat_cols)} ခုတွေ့ရှိသည်")
+        # Heatmap
+        fig, ax = plt.subplots(figsize=(8, 4))
+        sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
+        st.pyplot(fig)
+    
+    # Automated T-Test / Group Comparison if both Cat and Num cols exist
+    if len(cat_cols) >= 1 and len(num_cols) >= 1:
+        st.markdown("#### 🧪 Group Comparison (Independent T-Test)")
+        group_col = cat_cols[0]
+        val_col = num_cols[0]
         
-        if len(num_cols) >= 2:
-            st.info("💡 **Recommendation:** Numerical ကော်လံ ၂ ခုပါရှိသောကြောင့် **Correlation Analysis** ပြုလုပ်ရန် သင့်လျော်ပါသည်။")
-            if st.button("Run Auto-Correlation"):
-                corr_matrix = df[num_cols].corr()
-                st.write(corr_matrix)
-                fig, ax = plt.subplots()
-                sns.heatmap(corr_matrix, annot=True, cmap="Blues", ax=ax)
-                st.pyplot(fig)
-                
-        elif len(cat_cols) >= 1 and len(num_cols) >= 1:
-            st.info("💡 **Recommendation:** Group ခွဲရန် Categorical ကော်လံနှင့် တိုင်းတာရန် Numerical ကော်လံပါရှိသောကြောင့် **Independent T-Test (သို့) ANOVA** ပြုလုပ်ရန် သင့်လျော်ပါသည်။")
+        groups = df[group_col].unique()
+        if len(groups) == 2:
+            data1 = df[df[group_col] == groups[0]][val_col]
+            data2 = df[df[group_col] == groups[1]][val_col]
             
-    else:
-        # Manual Selection Mode (SPSS style)
-        st.subheader("⚙️ Manual Statistical Tests")
-        selected_test = st.selectbox("Choose Test", ["Descriptive Statistics", "Correlation", "T-Test"])
-        
-        if selected_test == "Descriptive Statistics":
-            st.write(df.describe())
+            t_stat, p_val = stats.ttest_ind(data1, data2)
+            st.write(f"**Comparing `{val_col}` across groups in `{group_col}`:**")
+            st.write(f"- T-statistic: `{t_stat:.4f}`")
+            st.write(f"- P-value: `{p_val:.4f}`")
             
-        elif selected_test == "Correlation":
-            c1 = st.selectbox("Variable 1", df.select_dtypes(include='number').columns)
-            c2 = st.selectbox("Variable 2", df.select_dtypes(include='number').columns)
-            if st.button("Calculate Correlation"):
-                corr, p_val = stats.pearsonr(df[c1].dropna(), df[c2].dropna())
-                st.success(f"Pearson Correlation (r): {corr:.4f}")
-                st.success(f"P-value: {p_val:.4f}")
-                if p_val < 0.05:
-                    st.markdown("✅ **Result:** Statistically Significant (ဆက်စပ်မှုရှိပါသည်)")
-                else:
-                    st.markdown("❌ **Result:** Not Significant (ဆက်စပ်မှုမရှိပါ)")
+            if p_val < 0.05:
+                st.success("✅ **Conclusion:** Statistically Significant (အုပ်စုများကြား သိသာထင်ရှားသော ကွာခြားချက် ရှိပါသည်)")
+            else:
+                st.warning("❌ **Conclusion:** Not Significant (အုပ်စုများကြား သိသာထင်ရှားသော ကွာခြားချက် မရှိပါ)")
+        else:
+            st.info("ℹ️ T-test လုပ်ဆောင်ရန် Categorical ကော်လံတွင် အုပ်စု ၂ ခုသာ ရှိရန် လိုအပ်ပါသည်။")
+
+    st.success("🎉 အချက်အလက် ခွဲခြမ်းစိတ်ဖြာမှု အားလုံး အောင်မြင်စွာ ပြီးဆုံးပါပြီ။")
 
 else:
-    st.info("စတင်ရန် ကျေးဇူးပြု၍ ဒေတာဖိုင် တင်ပေးပါ။")
+    st.info("👋 စတင်ရန် ကျေးဇူးပြု၍ သင့်ရဲ့ Research/Business Dataset ဖိုင်ကို အထက်ပါနေရာတွင် တင်ပေးပါ။")
